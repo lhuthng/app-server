@@ -2,6 +2,7 @@
   "name": "app-server",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,8 +12,10 @@
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "express": "^4.21.0",
     "fs": "^0.0.1-security",
-    "https": "^1.0.0"
+    "https": "^1.0.0",
+    "ws": "^8.18.0"
   }
 }

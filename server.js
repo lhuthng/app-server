@@ -1,8 +1,13 @@
-const fs = require('fs');
-const https = require('https');
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
+import fs from 'fs';
+import https from 'https';
+import express from 'express';
+import path from 'path';
+import cors from 'cors';
+import { WebSocketServer } from 'ws';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
 // Load SSL certificates
 const sslOptions = {
   key: fs.readFileSync('/etc/letsencrypt/live/thangvps.duckdns.org/privkey.pem'),
@@ -13,12 +18,12 @@ const sslOptions = {
 const app = express();
 
 app.use(cors({
-origin: '*'
+  origin: '*'
 }));
 
 app.get('/apps/:name/size', (req, res) => {
     const appName = req.params.name;
-    const appPath = path.join(__dirname, 'apps', appName, 'size.json');
+    const appPath = path.join(path.dirname(__filename), 'apps', appName, 'size.json');
 
     fs.readFile(appPath, 'utf8', (err, data) => {
         if (err) {
@@ -40,9 +45,8 @@ app.get('/apps/:name/size', (req, res) => {
 // Get applications
 app.use('/apps/:name', (req, res, next) => {
     const appName = req.params.name;
-    const appPath = path.join(__dirname, 'apps', appName);
-
-    if (fs.existsSync(appPath)) {
+    const appPath = path.join(path.dirname(__filename), 'apps', appName);
+    if (fs.existsSync(appPath)) { 
         express.static(appPath)(req, res, next);
     }
     else {
@@ -56,6 +60,83 @@ app.get('/', (req, res) => {
 });
 
 // Start HTTPS server
-https.createServer(sslOptions, app).listen(443, () => {
+const server = https.createServer(sslOptions, app).listen(443, () => {
   console.log('HTTPS Server running on port 443');
 });
+
+const wss = new WebSocketServer({ server });
+
+const hosts = {};
+const tokens = {}; 
+
+const pairs = new Map();
+
+function generateToken() {
+  let token;
+  do {
+      token = crypto.randomInt(100, 1000).toString();
+  } while (tokens[token]);
+  return token;
+}
+
+wss.on('connection', function connection(ws) {
+  ws.on('error', console.error);
+  ws.on('message', function message(data) {
+    console.log("hello " + data.toString());
+    const message = data.toString();
+    if (message.startsWith("host:")) {
+      const token = generateToken();
+      tokens[token] = {
+        socket: ws,
+        config: message.substring(5)
+      };
+      hosts[ws] = token;
+      ws.send(`token:${token.toString()}`);
+    }
+    else if (message.startsWith("join:")) {
+      console.log("1");
+      const token = message.substring(5);
+      if (token in tokens) {
+        console.log("2");
+        const ows = tokens[token].socket;
+        ws.send(`paired:${tokens[token].config}`);
+        pairs.set(ws, ows);
+        pairs.set(ows, ws);
+        ows.send("paired:");
+      }
+      else {
+        console.log("3");
+        ws.send("rejected:")
+      }
+    }
+    else if (message.startsWith("command:")) {
+      const [_, type, data] = message.split(":");
+      if (pairs.has(ws)) {
+        const ows = pairs.get(ws);
+        ows.send(`${type}:${data}`);
+      }
+      else {
+        if (type == "set_turn") {
+          tokens[hosts[ws]].config = data;
+        }
+      }
+    }
+    else if (message.startsWith("disconnect")) {
+
+    }
+  });
+  ws.on('close', function close() {
+    if (pairs.has(ws)) {
+      if (pairs.has(pairs.get(ws))) {
+        pairs.delete(pairs.get(ws));
+      }
+      pairs.delete(ws);
+    }
+    if (ws in hosts) {
+      if (hosts[ws] in tokens) {
+        delete tokens[hosts[ws]];
+      }
+      delete hosts[ws];
+    }
+  });
+}); 
