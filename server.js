@@ -66,7 +66,7 @@ const server = https.createServer(sslOptions, app).listen(443, () => {
 
 const wss = new WebSocketServer({ server });
 
-const hosts = {};
+const hosts = new Map();
 const tokens = {}; 
 
 const pairs = new Map();
@@ -90,14 +90,12 @@ wss.on('connection', function connection(ws) {
         socket: ws,
         config: message.substring(5)
       };
-      hosts[ws] = token;
+      hosts.set(ws, token);
       ws.send(`token:${token.toString()}`);
     }
     else if (message.startsWith("join:")) {
-      console.log("1");
       const token = message.substring(5);
       if (token in tokens) {
-        console.log("2");
         const ows = tokens[token].socket;
         ws.send(`paired:${tokens[token].config}`);
         pairs.set(ws, ows);
@@ -115,10 +113,11 @@ wss.on('connection', function connection(ws) {
         const ows = pairs.get(ws);
         ows.send(`${type}:${data}`);
       }
+      else if (type == "set_turn" && hosts.has(ws) && tokens.has(hosts.has(ws))) {
+          tokens.get(hosts.get(ws)).config = data;
+      }
       else {
-        if (type == "set_turn") {
-          tokens[hosts[ws]].config = data;
-        }
+        ws.send('unpaired:');
       }
     }
     else if (message.startsWith("disconnect")) {
@@ -126,13 +125,18 @@ wss.on('connection', function connection(ws) {
     }
   });
   ws.on('close', function close() {
+    console.log('SOMEONE IS LEAVING');
     if (pairs.has(ws)) {
+      console.log('HAS WS');
       if (pairs.has(pairs.get(ws))) {
+        console.log('HAS PAIR');
+        pairs.get(ws).send('unpaired:');
         pairs.delete(pairs.get(ws));
       }
       pairs.delete(ws);
     }
     if (ws in hosts) {
+      
       if (hosts[ws] in tokens) {
         delete tokens[hosts[ws]];
       }
