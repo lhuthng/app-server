@@ -1,30 +1,52 @@
-import fs from 'fs';
-import https from 'https';
 import express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import https from 'https';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import crypto from 'crypto';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-// Load SSL certificates
 const sslOptions = {
   key: fs.readFileSync('/etc/letsencrypt/live/thangvps.duckdns.org/privkey.pem'),
   cert: fs.readFileSync('/etc/letsencrypt/live/thangvps.duckdns.org/fullchain.pem')
 };
 
-// Initialize Express app
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
 app.use(cors({
-  origin: '*'
+    origin: '*'
 }));
+  
+app.use(express.static(path.join(__dirname, '../my-portfolio/build'))); 
+app.use(express.static(path.join(__dirname, './apps/'))); 
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../my-portfolio/build', 'index.html'));
+});
+
+const server = https.createServer(sslOptions, app).listen(443, () => {
+console.log('HTTPS Server running on port 443');
+});
+
+
+
+
+
+
+
+
+
+
+
+
+// WEB SERVER
 app.get('/apps/:name/size', (req, res) => {
     const appName = req.params.name;
-    const appPath = path.join(path.dirname(__filename), 'apps', appName, 'size.json');
-
+    const appPath = path.join(__dirname, 'apps', appName, 'size.json');
     fs.readFile(appPath, 'utf8', (err, data) => {
         if (err) {
           console.error('Error reading size.json:', err);
@@ -42,26 +64,15 @@ app.get('/apps/:name/size', (req, res) => {
       });
 });
 
-// Get applications
 app.use('/apps/:name', (req, res, next) => {
     const appName = req.params.name;
-    const appPath = path.join(path.dirname(__filename), 'apps', appName);
+    const appPath = path.join(__dirname, 'apps', appName);
     if (fs.existsSync(appPath)) { 
         express.static(appPath)(req, res, next);
     }
     else {
         res.status(404).send('App not found');
     }
-});
-
-// Default route
-app.get('/', (req, res) => {
-  res.send('Welcome to the HTML5 Appication Distribution Server!');
-});
-
-// Start HTTPS server
-const server = https.createServer(sslOptions, app).listen(443, () => {
-  console.log('HTTPS Server running on port 443');
 });
 
 const wss = new WebSocketServer({ server });
@@ -82,7 +93,6 @@ function generateToken() {
 wss.on('connection', function connection(ws) {
   ws.on('error', console.error);
   ws.on('message', function message(data) {
-    console.log("hello " + data.toString());
     const message = data.toString();
     if (message.startsWith("host:")) {
       const token = generateToken();
@@ -103,7 +113,6 @@ wss.on('connection', function connection(ws) {
         ows.send("paired:");
       }
       else {
-        console.log("3");
         ws.send("rejected:")
       }
     }
@@ -125,18 +134,15 @@ wss.on('connection', function connection(ws) {
     }
   });
   ws.on('close', function close() {
-    console.log('SOMEONE IS LEAVING');
     if (pairs.has(ws)) {
-      console.log('HAS WS');
       if (pairs.has(pairs.get(ws))) {
-        console.log('HAS PAIR');
         pairs.get(ws).send('unpaired:');
         pairs.delete(pairs.get(ws));
       }
       pairs.delete(ws);
     }
     if (ws in hosts) {
-      
+
       if (hosts[ws] in tokens) {
         delete tokens[hosts[ws]];
       }
