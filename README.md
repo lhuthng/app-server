@@ -16,7 +16,21 @@ This repository houses three key components:
 * Websocket (for the WebSocket server)
 
 ## Reminders (for myself)
+* Install dependencies
+```bash
+npm install
+```
+* Build the portfolio (as a sibling directory)
 
-* Certificates?
+* Generate certificates
+```bash
+sudo apt update
+sudo apt install certbot
+sudo certbot certonly --standalone -d thangvps.duckdns.org
+```
 * Put games in the games folder.
 * Create a size.json for fetching the size.
+* Run the server in the background
+```bash
+nohup nodejs server.js &
+```

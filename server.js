@@ -32,17 +32,6 @@ const server = https.createServer(sslOptions, app).listen(443, () => {
 console.log('HTTPS Server running on port 443');
 });
 
-
-
-
-
-
-
-
-
-
-
-
 // WEB SERVER
 app.get('/apps/:name/size', (req, res) => {
     const appName = req.params.name;
@@ -75,6 +64,7 @@ app.use('/apps/:name', (req, res, next) => {
     }
 });
 
+// SOCKET SERVERs = new WebSocketServer({ server });
 const wss = new WebSocketServer({ server });
 
 const hosts = new Map();
