@@ -26,7 +26,7 @@ npm install
 ```bash
 sudo apt update
 sudo apt install certbot
-sudo certbot certonly --standalone -d thangvps.duckdns.org
+sudo certbot certonly --standalone -d huuthang.site
 ```
 * Put games in the games folder.
 * Create a size.json for fetching the size.

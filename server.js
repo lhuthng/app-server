@@ -8,8 +8,8 @@ import { WebSocketServer } from 'ws';
 import crypto from 'crypto';
 
 const sslOptions = {
-  key: fs.readFileSync('/etc/letsencrypt/live/thangvps.duckdns.org/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/thangvps.duckdns.org/fullchain.pem')
+  key: fs.readFileSync('/etc/letsencrypt/live/huuthang.site/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/huuthang.site/fullchain.pem')
 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,8 +24,12 @@ app.use(cors({
 app.use(express.static(path.join(__dirname, '../my-portfolio/build'))); 
 app.use(express.static(path.join(__dirname, './apps/'))); 
 
-app.get('/', (req, res) => {
+app.get('/old/', (req, res) => {
   res.sendFile(path.join(__dirname, '../my-portfolio/build', 'index.html'));
+});
+
+app.get('/', (req, res) => {
+  res.redirect(301, '/old');
 });
 
 const server = https.createServer(sslOptions, app).listen(443, () => {
@@ -33,7 +37,7 @@ console.log('HTTPS Server running on port 443');
 });
 
 // WEB SERVER
-app.get('/apps/:name/size', (req, res) => {
+app.get('/old/apps/:name/size', (req, res) => {
     const appName = req.params.name;
     const appPath = path.join(__dirname, 'apps', appName, 'size.json');
     fs.readFile(appPath, 'utf8', (err, data) => {
@@ -53,7 +57,7 @@ app.get('/apps/:name/size', (req, res) => {
       });
 });
 
-app.use('/apps/:name', (req, res, next) => {
+app.use('/old/apps/:name', (req, res, next) => {
     const appName = req.params.name;
     const appPath = path.join(__dirname, 'apps', appName);
     if (fs.existsSync(appPath)) { 
